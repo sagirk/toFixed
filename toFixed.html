@@ -1,31 +1,132 @@
 <script src="https://rawgit.com/sagirk/simpleTest/master/simpletest.js"></script>
-<script src="./toFixed.js"></script>
 <script>
+// Function signature:
+  // toFixed(value[, precision])
+
+// Parameters:
+  // value: The number object.
+  // precision: The number of digits to appear after the decimal point (this may be a value between 0 and 20, inclusive). If this argument is omitted, it is treated as 0.
+
+// Return value:
+  // A string representing the given number using fixed-point notation.
+
+// Exceptions:
+  // RangeError: If precision is too small or too large (outside of values between 0 and 20).
+  // TypeError: If value is not a Number.
+
+function toFixed(value, precision) {
+  /* Edge cases */
+  // Throw a RangeError if precision is not a value within 0 and 20.
+  if (precision < 0 || precision > 20) {
+    throw new RangeError;
+  }
+  // Throw TypeError if value is not a Number.
+  if (typeof value !== 'number') {
+    throw new TypeError();
+  }
+
+  /* Normal case */
+  // If precision is not specified, treat it as 0.
+  if (typeof precision === 'undefined') {
+    precision = 0;
+  }
+
+  var valueAsString = Number.prototype.toString.call(value);
+  var splitValue = valueAsString.split('.');
+  var integerPart = splitValue[0];
+  var fractionalPart = splitValue[1] || '';
+  var lengthOfFractionalPart = fractionalPart.length;
+  var indexOfDecimal;
+  var intermediateValue;
+  var roundedValue;
+  var finalValue;
+
+  // If fractionalPart has less than precision digits, pad it with zeroes so it has exactly precision digits.
+  if (lengthOfFractionalPart < precision) {
+    fractionalPart += '0'.repeat(precision - lengthOfFractionalPart);
+    valueAsString = integerPart + '.' + fractionalPart;
+  }
+
+  // If precision is not zero and value has fractionalPart, multiply up by precision, round accurately, then divide and use native toFixed().
+  if (precision && lengthOfFractionalPart) {
+    // Move decimal to the right by precision digits to get equivalent of multiplying up by precision
+    indexOfDecimal = valueAsString.indexOf('.');
+    if (indexOfDecimal === -1) {
+      indexOfDecimal = valueAsString.length;
+    }
+    intermediateValue = valueAsString.substring(0, indexOfDecimal) +
+      valueAsString.substr(indexOfDecimal + 1, precision) + '.' +
+      valueAsString.substr((indexOfDecimal + 1) + precision);
+
+    // Round accurately
+    roundedValue = String(Math.round(+intermediateValue));
+
+    // Move decimal back to the left by precision digits to get equivalent of dividing by precision.
+    indexOfDecimal = roundedValue.indexOf('.');
+    if (indexOfDecimal === -1) {
+      indexOfDecimal = roundedValue.length;
+    }
+    finalValue = roundedValue.substr(0, indexOfDecimal - precision) + '.' +
+      roundedValue.substring(indexOfDecimal - precision, indexOfDecimal) +
+      roundedValue.substr(indexOfDecimal + 1);
+    finalValue = String((+finalValue).toFixed(precision));
+
+  // If precision is zero or value has no fractionalPart, simply round value and use native toFixed() to produce finalValue.
+  } else {
+    roundedValue = Math.round(+valueAsString);
+    finalValue = String(roundedValue.toFixed(precision));
+  }
+
+  return finalValue;
+}
+
 tests({
   'It should return a string representation of value.': function () {
-    fail();
+    eq(toFixed(2), '2');
   },
   'It should not use exponential notation.': function () {
-    fail();
+    eq(toFixed(2e+1), '20');
   },
-  'It should have exactly optionalPrecision digits after the decimal place.': function () {
-    fail();
+  'It should have exactly precision digits after the decimal place.': function () {
+    eq(toFixed(2.34, 1), '2.3');
+    eq(toFixed(-2.34, 1), '-2.3');
   },
   'It should round the number if necessary.': function () {
-    fail();
+    eq(toFixed(2.35, 1), '2.4');
+    eq(toFixed(12345.6789), '12346');
+    eq(toFixed(12345.6789, 1), '12345.7');
+    // Cases where native toFixed() fails to round accurately.
+    eq(toFixed(0.615, 2), '0.62');
+    eq(toFixed(10.235, 2), '10.24');
+    eq(toFixed(1.005, 2), '1.01');
   },
   'It should pad the fractional part with zeroes if necessary.': function () {
-    fail();
+    eq(toFixed(12345.6789, 6), '12345.678900');
+    eq(toFixed(1.23e+20, 2), '123000000000000000000.00');
+    eq(toFixed(1.23e-10, 2), '0.00');
+  },
+  'It should return a string in exponential notation for value greater than 1e+21.': function () {
+    eq(toFixed(1e+21), '1e+21');
   },
 
-  'It should return a string in exponential notation for values greater than 1e+21.': function () {
-    fail();
-  },
-  'It should throw a RangeError if optionalPrecision is not a value within 0 and 20.': function () {
-    fail();
+  'It should throw a RangeError if precision is not a value within 0 and 20.': function () {
+    try {
+      toFixed(12345.6789, -1);
+    } catch (error) {
+      eq(error instanceof RangeError, true);
+    }
+    try {
+      toFixed(12345.6789, 21);
+    } catch (error) {
+      eq(error instanceof RangeError, true);
+    }
   },
   'It should throw a TypeError if value is not a Number.': function () {
-    fail();
+    try {
+      toFixed('a');
+    } catch (error) {
+      eq(error instanceof TypeError, true);
+    }
   }
 });
 </script>
